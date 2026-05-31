@@ -1590,9 +1590,13 @@ class Fitter:
         for o in model_posteriors:
             evidences.append(o['global_lnZ'])
             post_samples.append(o['posterior_samples'])
-        # Convert evidences to weights/probabilities.
+        # Convert evidences to weights/probabilities via a softmax of the
+        # log-evidences. Shift by the MAX (not the min) so the largest exponent
+        # is 0: softmax is shift-invariant, so the weights are unchanged in the
+        # normal regime, but shifting by the min lets exp() overflow to inf ->
+        # nan when one grid's log-evidence dominates (delta lnZ > ~709).
         evidences = np.array(evidences)
-        weights = evidences - evidences.min()
+        weights = evidences - evidences.max()
         weights = [np.exp(e) / np.exp(weights).sum() for e in weights]
         weights = np.array(weights)
         # We're not averaging these

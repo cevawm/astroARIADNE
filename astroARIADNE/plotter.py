@@ -200,6 +200,15 @@ class SEDPlotter:
             if self.grid.lower() == 'coelho':
                 with open(gridsdir + '/Coelho_DF.pkl', 'rb') as intp:
                     self.interpolator = DFInterpolator(pd.read_pickle(intp))
+            if self.grid.lower() == 'bosz':
+                with open(gridsdir + '/BOSZ_DF.pkl', 'rb') as intp:
+                    self.interpolator = DFInterpolator(pd.read_pickle(intp))
+            if self.grid.lower() == 'sphinx':
+                with open(gridsdir + '/SPHINX_DF.pkl', 'rb') as intp:
+                    self.interpolator = DFInterpolator(pd.read_pickle(intp))
+            if self.grid.lower() == 'tlusty':
+                with open(gridsdir + '/TLUSTY_DF.pkl', 'rb') as intp:
+                    self.interpolator = DFInterpolator(pd.read_pickle(intp))
 
             # Get best fit parameters.
             theta_samples = np.zeros(self.order.shape[0])
@@ -755,6 +764,21 @@ class SEDPlotter:
 
     def SED(self, ax):
         """Plot the SED model."""
+        # Only these grids ship full spectra (cache / models dir). The newer
+        # grids (bosz, sphinx, tlusty) provide a band-flux interpolator for
+        # fitting but no spectra, so the continuous model line can't be drawn.
+        # Degrade gracefully: plot_SED still shows the photometry and the
+        # synthetic-flux markers; we just skip (and explain) the model curve.
+        # (Also guards the if/elif chain below, which has no else and would
+        # otherwise hit undefined wave/flux in the save branch.)
+        _spectra_grids = ('phoenix', 'btsettl', 'btnextgen', 'btcond',
+                          'ck04', 'kurucz', 'coelho')
+        if self.grid.lower() not in _spectra_grids:
+            logger.warning(
+                f"Grid '{self.grid}' has no spectra in the cache; plotting the "
+                f"SED without the continuous model spectrum (photometry and "
+                f"synthetic model fluxes are still shown).")
+            return
         Rv = 3.1  # For extinction.
         if not self.norm:
             rad = self.theta[4]

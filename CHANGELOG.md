@@ -5,6 +5,23 @@ All notable changes to astroARIADNE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-05-31
+
+### Fixed
+- BMA model weights: the evidence softmax now shifts by the maximum
+  log-evidence instead of the minimum, preventing `exp()` overflow to `nan`
+  weights when one grid dominates by a large margin (Δln Z ≳ 709).
+- `_make_transform` (prior transform) read only keyword arguments, so a
+  positionally-constructed prior (`truncnorm(a, b, loc, scale)`) raised a
+  `KeyError` and `norm(mu, sigma)` silently became a standard normal. It now
+  normalises parameters via `_parse_args`, supporting both styles exactly.
+- `SEDPlotter` could not plot fits from the BOSZ, SPHINX or TLUSTY grids: the
+  interpolator dispatch was missing those grids (`AttributeError`), and `SED()`
+  had no fallback for grids without cached spectra. The interpolator path now
+  covers all grids, and `SED()` skips the continuous model spectrum with a
+  warning (still drawing photometry and synthetic fluxes) when a grid has no
+  spectra available.
+
 ## [1.5.0] - 2026-05-23
 
 ### Added

@@ -146,20 +146,21 @@ def _make_transform(prior):
     else (e.g. the callable spline population priors) is used directly, and
     unknown frozen distributions fall back to ``.ppf``.
     """
-    # scipy frozen distributions expose ``.dist.name`` and stash their
-    # parameters in ``.kwds``.
+    # scipy frozen distributions expose ``.dist.name``; normalise the shape
+    # params, loc and scale via ``_parse_args`` so this works whether the prior
+    # was built with keywords (``norm(loc=.., scale=..)``) or positionally
+    # (``norm(5500, 120)`` / ``truncnorm(a, b, loc, scale)``). Reading ``.kwds``
+    # alone silently dropped positional loc/scale and raised KeyError on a
+    # positionally-built truncnorm.
     if hasattr(prior, 'dist') and hasattr(prior.dist, 'name'):
         name = prior.dist.name
-        kwds = prior.kwds
-        loc = kwds.get('loc', 0.0)
-        scale = kwds.get('scale', 1.0)
+        shapes, loc, scale = prior.dist._parse_args(*prior.args, **prior.kwds)
         if name == 'uniform':
             return lambda u, loc=loc, scale=scale: loc + u * scale
         if name == 'norm':
             return lambda u, loc=loc, scale=scale: loc + scale * ndtri(u)
         if name == 'truncnorm':
-            a = kwds['a']
-            b = kwds['b']
+            a, b = shapes
             phi_a = ndtr(a)
             span = ndtr(b) - phi_a
             return lambda u, loc=loc, scale=scale, pa=phi_a, span=span: \
