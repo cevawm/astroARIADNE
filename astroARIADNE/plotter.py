@@ -151,7 +151,8 @@ class SEDPlotter:
             create_dir(out_folder)
             if self.engine != 'Bayesian Model Averaging':
                 create_dir(traces)
-            create_dir(histograms)
+            if not self.irx:
+                create_dir(histograms)
 
             self.star.load_grid(self.grid)
 
@@ -792,7 +793,7 @@ class SEDPlotter:
         # SED plot.
         if self.grid == 'phoenix':
             cached = self._load_from_cache('phoenix')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 new_w, brf = cached
             else:
                 wave = fits.open(self.moddir + self.__wav_file)[0].data
@@ -818,7 +819,7 @@ class SEDPlotter:
 
         elif self.grid == 'btsettl':
             cached = self._load_from_cache('btsettl')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 wave, brf = cached
             else:
                 wave, flux = self.fetch_btsettl()
@@ -841,7 +842,7 @@ class SEDPlotter:
 
         elif self.grid == 'btnextgen':
             cached = self._load_from_cache('btnextgen')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 wave, brf = cached
             else:
                 wave, flux = self.fetch_btnextgen()
@@ -864,7 +865,7 @@ class SEDPlotter:
 
         elif self.grid == 'btcond':
             cached = self._load_from_cache('btcond')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 wave, brf = cached
             else:
                 wave, flux = self.fetch_btcond()
@@ -887,7 +888,7 @@ class SEDPlotter:
 
         elif self.grid == 'ck04':
             cached = self._load_from_cache('ck04')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 wave, flux = cached
             else:
                 wave, flux = self.fetch_ck04()
@@ -904,7 +905,7 @@ class SEDPlotter:
 
         elif self.grid == 'kurucz':
             cached = self._load_from_cache('kurucz')
-            if cached is not None and not self.irx:
+            if cached is not None:
                 wave, flux = cached
             else:
                 wave, flux = self.fetch_kurucz()
