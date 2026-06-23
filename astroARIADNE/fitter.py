@@ -1498,16 +1498,17 @@ class Fitter:
             probdat += f'{k}_probability\t{avgd["weights"][k]:.4f}\n'
 
         # Get synthetic mag and fluxes for highest probability model.
-        synth_mod = 'btsettl'
+        synth_mod = max_prob_mod
         intp = self.load_interpolator(synth_mod)
         ogteff = avgd['originals'][max_prob_mod]['teff']
         oglogg = avgd['originals'][max_prob_mod]['logg']
         ogfeh = avgd['originals'][max_prob_mod]['z']
-        fluxes = np.zeros((len(oglogg), len(filter_names)))
+        avail_filts = tuple(f for f in filter_names if f in intp.column_index)
+        fluxes = np.zeros((len(oglogg), len(avail_filts)))
         for i, t, g, z in zip(range(len(oglogg)), ogteff, oglogg, ogfeh):
-            fluxes[i, :] = get_interpolated_flux(t, g, z, filter_names, intp)
+            fluxes[i, :] = get_interpolated_flux(t, g, z, avail_filts, intp)
         synthdat = 'Filter\tFlux\n'
-        for i, filt in enumerate(filter_names):
+        for i, filt in enumerate(avail_filts):
             samp = fluxes[:, i]
             # xx, pdf = estimate_pdf(samp)
             # cdf = estimate_cdf(samp, hdr=True)
