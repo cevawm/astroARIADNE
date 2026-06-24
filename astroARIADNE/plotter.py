@@ -463,6 +463,9 @@ class SEDPlotter:
         # Get plot ylims.
         ymin = (self.flux * self.wave).min()
         ymax = (self.flux * self.wave).max()
+        if self.irx:
+            ymin = min(ymin, (self.irx_flux * self.irx_wave).min())
+            ymax = max(ymax, (self.irx_flux * self.irx_wave).max())
 
         f, ax = plt.subplots(figsize=self.figsize)
 
@@ -530,12 +533,29 @@ class SEDPlotter:
             log_scale = np.median(np.log10(F_lam[trusted])
                                   - np.log10(B_bands[trusted]))
             scale = 10.0 ** log_scale
+            lam_end = wave_um.max() * 2.0
+            if self.irx:
+                lam_end = max(lam_end, self.irx_wave.max() * 2.0)
             lam_curve = np.logspace(np.log10(max(wave_um.min() * 0.5, 0.1)),
-                                    np.log10(wave_um.max() * 2.0), 400)
+                                    np.log10(lam_end), 400)
             F_curve = _planck(lam_curve) * scale
             ax.plot(lam_curve, F_curve * lam_curve,
                     color='0.4', lw=1.0, ls='--', zorder=1,
                     label=f'BB fit, T={bb_T:.0f} K')
+
+        if self.irx:
+            irx_used_f = self.star.filter_names[self.star.irx_filter_mask]
+            for w, fl, fe, bp, fi in zip(
+                    self.irx_wave, self.irx_flux, self.irx_flux_er,
+                    self.irx_bandpass, irx_used_f):
+                ax.errorbar(w, fl * w,
+                            xerr=bp, yerr=fe,
+                            fmt=',', ecolor=self.irx_error_color, zorder=0,
+                            marker=None)
+                ax.scatter(w, fl * w,
+                           edgecolors='black', marker=self.marker,
+                           c=[self.marker_colors_irx], s=self.scatter_size,
+                           zorder=1, alpha=self.scatter_alpha, label=fi)
 
         ax.set_ylim([ymin * .8, ymax * 1.25])
         ax.set_xscale('log', nonpositive='clip')
@@ -556,13 +576,21 @@ class SEDPlotter:
         )
         # X-axis built like the model SED plot: log scale in micron, integer
         # ticks, lower bound set by whether GALEX UV bands are present.
-        ax.set_xticks(np.linspace(1, 10, 10))
+        xticks = np.linspace(1, 10, 10)
+        if self.irx:
+            xticks = [1, 3, 5, 10, 20, 50, 100, 250]
+        ax.set_xticks(xticks)
         ax.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
         fnames = self.star.filter_names[self.star.filter_mask]
+        xlims1 = [0.125, 6]
+        xlims2 = [0.25, 6]
+        if self.irx:
+            xlims1 = [0.125, 250]
+            xlims2 = [0.25, 250]
         if 'GALEX_FUV' in fnames or 'GALEX_NUV' in fnames:
-            ax.set_xlim([0.125, 6])
+            ax.set_xlim(xlims1)
         else:
-            ax.set_xlim([0.25, 6])
+            ax.set_xlim(xlims2)
         ax.set_xlabel(r'$\lambda (\mu m)$',
                       fontsize=self.fontsize,
                       fontname=self.fontname)
@@ -585,11 +613,14 @@ class SEDPlotter:
             return
         print('Plotting SED')
         # Get plot ylims.
-        ymin = (self.flux * self.wave).min()
-        ymax = (self.flux * self.wave).max()
+        ymin = min((self.flux * self.wave).min(), (self.model * self.wave).min())
+        ymax = max((self.flux * self.wave).max(), (self.model * self.wave).max())
 
         if self.irx:
-            ymin = (self.irx_model * self.irx_wave).min()
+            ymin = min(ymin, (self.irx_flux * self.irx_wave).min(),
+                       (self.irx_model * self.irx_wave).min())
+            ymax = max(ymax, (self.irx_flux * self.irx_wave).max(),
+                       (self.irx_model * self.irx_wave).max())
 
         n_filt = self.star.used_filters.sum()
         n_pars = int(len(self.theta) - n_filt)
