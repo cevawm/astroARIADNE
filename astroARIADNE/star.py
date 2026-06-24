@@ -506,6 +506,9 @@ class Star:
         self.used_filters[mask] = 0
         self.filter_mask = np.where(self.used_filters == 1)[0]
 
+        if hasattr(self, '_qc_bb_flagged_bands') and filt in self._qc_bb_flagged_bands:
+            self._qc_bb_flagged_bands = [b for b in self._qc_bb_flagged_bands if b != filt]
+
         self.__reload_fluxes()
         print(colored(f'\t\t\tRemoved {filt}!!', 'yellow'))
         pass
