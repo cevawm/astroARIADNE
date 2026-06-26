@@ -110,6 +110,7 @@ class SEDPlotter:
         png = True if not pdf else False
         self.png = png
         self.out_folder = out_folder
+        self.pkl_path = input_files
         self.bma = False
         self.method = method
         self.save = save_model
@@ -533,6 +534,42 @@ class SEDPlotter:
             log_scale = np.median(np.log10(F_lam[trusted])
                                   - np.log10(B_bands[trusted]))
             scale = 10.0 ** log_scale
+            if hasattr(self, 'out') and self.pkl_path != 'raw':
+                # Magnitude-space residuals, consistent with clip_outlier_magnitudes in star.py
+                _err_floor = 0.05
+                _mags = self.star.mags[self.star.filter_mask]
+                _mag_errs = self.star.mag_errs[self.star.filter_mask]
+                _lam_m = np.array([get_effective_wavelength(f) for f in used_f]) * 1e-6
+                _f0 = np.empty(len(used_f))
+                for _i, _band in enumerate(used_f):
+                    if 'PS1_' in _band or 'SDSS_' in _band or 'GALEX_' in _band:
+                        _f0[_i] = convert_f_nu_to_f_lambda(3.631e-20, get_effective_wavelength(_band))
+                    else:
+                        _f0[_i] = get_zero_flux(_band)
+                _x_bb = h_ * c_ / (_lam_m * k_ * bb_T)
+                _B_bb = 1.0 / (_lam_m**5 * (np.exp(np.clip(_x_bb, 0, 500)) - 1.0))
+                _synth_mag = -2.5 * np.log10(np.maximum(_B_bb / _f0, 1e-300))
+                _offset = np.mean(_mags[trusted] - _synth_mag[trusted])
+                _bb_res_mag = np.abs(_mags - (_synth_mag + _offset)) / np.maximum(_mag_errs, _err_floor)
+                self.out['bb_max_residual'] = float(np.max(_bb_res_mag))
+                self.out['bb_mean_residual'] = float(np.mean(_bb_res_mag))
+                if self.irx:
+                    _irx_used_f = self.star.filter_names[self.star.irx_filter_mask]
+                    _irx_mags = self.star.mags[self.star.irx_filter_mask]
+                    _irx_mag_errs = self.star.mag_errs[self.star.irx_filter_mask]
+                    _irx_lam_m = np.array([get_effective_wavelength(f) for f in _irx_used_f]) * 1e-6
+                    _irx_f0 = np.empty(len(_irx_used_f))
+                    for _i, _band in enumerate(_irx_used_f):
+                        if 'PS1_' in _band or 'SDSS_' in _band or 'GALEX_' in _band:
+                            _irx_f0[_i] = convert_f_nu_to_f_lambda(3.631e-20, get_effective_wavelength(_band))
+                        else:
+                            _irx_f0[_i] = get_zero_flux(_band)
+                    _x_irx = h_ * c_ / (_irx_lam_m * k_ * bb_T)
+                    _B_irx = 1.0 / (_irx_lam_m**5 * (np.exp(np.clip(_x_irx, 0, 500)) - 1.0))
+                    _irx_synth_mag = -2.5 * np.log10(np.maximum(_B_irx / _irx_f0, 1e-300))
+                    _irx_res_mag = np.abs(_irx_mags - (_irx_synth_mag + _offset)) / np.maximum(_irx_mag_errs, _err_floor)
+                    self.out['irx_bb_max_residual'] = float(np.max(_irx_res_mag))
+                pickle.dump(self.out, open(self.pkl_path, 'wb'))
             lam_end = wave_um.max() * 2.0
             if self.irx:
                 lam_end = max(lam_end, self.irx_wave.max() * 2.0)
@@ -792,6 +829,10 @@ class SEDPlotter:
             data = np.vstack((self.wave, self.model * self.wave)).T
             np.savetxt(f'{self.out_folder}/synthetic.dat', data, fmt='%s',
                        header='wavelength(mu m) wave*flux(erg cm-2 s-2)')
+        if hasattr(self, 'out') and self.pkl_path != 'raw':
+            self.out['sed_max_residual'] = float(np.max(np.abs(norm_res)))
+            self.out['sed_mean_residual'] = float(np.mean(np.abs(norm_res)))
+            pickle.dump(self.out, open(self.pkl_path, 'wb'))
         pass
 
     def SED(self, ax):
