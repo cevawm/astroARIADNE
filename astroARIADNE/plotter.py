@@ -681,6 +681,21 @@ class SEDPlotter:
             self.av_law)
 
         norm_res = residuals / errors
+        res_yerr = np.array(self.flux_er) / errors
+        valid_res = np.isfinite(norm_res) & np.isfinite(res_yerr)
+
+        wave_res = self.wave[valid_res]
+        norm_res_plot = norm_res[valid_res]
+        res_yerr_plot = res_yerr[valid_res]
+
+        if np.ndim(self.bandpass) == 2:
+            bandpass_res = self.bandpass[:, valid_res]
+        else:
+            bandpass_res = self.bandpass[valid_res]
+
+        marker_colors_res = self.marker_colors
+        if np.ndim(self.marker_colors) > 0 and len(self.marker_colors) == len(self.wave):
+            marker_colors_res = np.asarray(self.marker_colors)[valid_res]
 
         # Create plot layout
 
@@ -724,12 +739,12 @@ class SEDPlotter:
         # Residual plot
         ax_r.axhline(y=0, lw=2, ls='--', c='k', alpha=.7)
 
-        ax_r.errorbar(self.wave, norm_res, zorder=3,
-                      xerr=self.bandpass, yerr=np.array(self.flux_er) / errors,
+        ax_r.errorbar(wave_res, norm_res_plot, zorder=3,
+                  xerr=bandpass_res, yerr=res_yerr_plot,
                       fmt=',', ecolor=self.error_color, marker=None)
-        ax_r.scatter(self.wave, norm_res, zorder=3,
+        ax_r.scatter(wave_res, norm_res_plot, zorder=3,
                      edgecolors='black', marker=self.marker,
-                     c=self.marker_colors, s=self.scatter_size,
+                     c=marker_colors_res, s=self.scatter_size,
                      alpha=self.scatter_alpha)
         # ax_r.scatter(self.wave, norm_res,
         #              marker=self.marker_model,
@@ -751,7 +766,9 @@ class SEDPlotter:
                          s=self.scatter_size, facecolor='none', lw=3, zorder=10)
 
         # Formatting
-        res_std = norm_res.std()
+        res_std = np.std(norm_res_plot) if norm_res_plot.size else 1.0
+        if not np.isfinite(res_std) or res_std == 0:
+            res_std = 1.0
         ax.set_ylim([ymin * 0.6, ymax * 1.5])
         # ax_r.set_ylim([-5, 5])
         ax_r.set_ylim([-5 * res_std, 5 * res_std])
@@ -830,8 +847,12 @@ class SEDPlotter:
             np.savetxt(f'{self.out_folder}/synthetic.dat', data, fmt='%s',
                        header='wavelength(mu m) wave*flux(erg cm-2 s-2)')
         if hasattr(self, 'out') and self.pkl_path != 'raw':
-            self.out['sed_max_residual'] = float(np.max(np.abs(norm_res)))
-            self.out['sed_mean_residual'] = float(np.mean(np.abs(norm_res)))
+            if norm_res_plot.size:
+                self.out['sed_max_residual'] = float(np.max(np.abs(norm_res_plot)))
+                self.out['sed_mean_residual'] = float(np.mean(np.abs(norm_res_plot)))
+            else:
+                self.out['sed_max_residual'] = float('nan')
+                self.out['sed_mean_residual'] = float('nan')
             pickle.dump(self.out, open(self.pkl_path, 'wb'))
         pass
 
