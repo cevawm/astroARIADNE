@@ -753,17 +753,13 @@ class SEDPlotter:
 
         if self.irx:
             irx_res = (self.irx_flux - self.irx_model) / self.irx_flux_er
-            ax_r.errorbar(self.irx_wave, np.zeros(self.irx_wave.shape[0]),
-                          xerr=self.irx_bandpass, yerr=self.irx_flux_er,
+            ax_r.errorbar(self.irx_wave, irx_res,
+                          xerr=self.irx_bandpass, yerr=np.ones(self.irx_wave.shape[0]),
                           fmt=',', ecolor=self.irx_error_color, marker=None)
-            ax_r.scatter(self.irx_wave, np.zeros(self.irx_wave.shape[0]),
+            ax_r.scatter(self.irx_wave, irx_res,
                          edgecolors='black', marker=self.marker,
                          c=self.marker_colors_irx, s=self.scatter_size,
                          alpha=self.scatter_alpha)
-            ax_r.scatter(self.irx_wave, irx_res,
-                         marker=self.marker_model,
-                         edgecolors=self.marker_colors_model_irx,
-                         s=self.scatter_size, facecolor='none', lw=3, zorder=10)
 
         # Formatting
         res_std = np.std(norm_res_plot) if norm_res_plot.size else 1.0
