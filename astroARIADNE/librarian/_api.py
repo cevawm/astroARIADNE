@@ -10,9 +10,9 @@ Ported from astroARIADNE with cleaner declarative structure.
 __all__ = ["Librarian"]
 
 import logging
+import threading
 import warnings
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
@@ -36,9 +36,6 @@ Vizier = _VizierClass(row_limit=-1, columns=["all"], timeout=120)
 Gaia.TIMEOUT = 120
 XMatch.TIMEOUT = 120
 Catalogs.TIMEOUT = 120
-
-# Shared executor used by _with_timeout — avoids per-call pool spawn/teardown.
-_TIMEOUT_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="librarian")
 
 # Module-level dustmap caches. Constructing SFDQuery loads ~600 MB of FITS;
 # repeating per-Star creation makes catalogue-scale runs unusable.
@@ -77,18 +74,31 @@ _QUERY_TIMEOUT = 120  # seconds per network query
 
 
 def _with_timeout(func, *args, timeout=_QUERY_TIMEOUT, **kwargs):
-    """Run any callable with a hard timeout. Returns None on timeout or error."""
-    from concurrent.futures import TimeoutError as FuturesTimeout
+    """Run any callable with a hard timeout. Returns None on timeout or error.
 
-    future = _TIMEOUT_POOL.submit(func, *args, **kwargs)
-    try:
-        return future.result(timeout=timeout)
-    except FuturesTimeout:
+    Uses a daemon thread so that a still-running network request cannot prevent
+    the Python process from exiting once the fit is complete.
+    """
+    result_holder: list = [None]
+    exc_holder: list = [None]
+
+    def _runner():
+        try:
+            result_holder[0] = func(*args, **kwargs)
+        except Exception as e:  # noqa: BLE001
+            exc_holder[0] = e
+
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+
+    if t.is_alive():
         logger.warning("Query timed out after %ds", timeout)
         return None
-    except Exception as e:
-        logger.warning("Query failed: %s", e)
+    if exc_holder[0] is not None:
+        logger.warning("Query failed: %s", exc_holder[0])
         return None
+    return result_holder[0]
 
 
 def _tap_query(service, query, timeout=_QUERY_TIMEOUT):
