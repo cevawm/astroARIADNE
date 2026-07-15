@@ -32,10 +32,10 @@ warnings.filterwarnings("ignore", category=UserWarning, append=True)
 # Local Vizier instance — never mutate the module-level singleton, which is
 # shared across the whole Python process and breaks any other consumer of
 # astroquery in the same interpreter.
-Vizier = _VizierClass(row_limit=-1, columns=["all"], timeout=60)
-Gaia.TIMEOUT = 60
-XMatch.TIMEOUT = 60
-Catalogs.TIMEOUT = 60
+Vizier = _VizierClass(row_limit=-1, columns=["all"], timeout=120)
+Gaia.TIMEOUT = 120
+XMatch.TIMEOUT = 120
+Catalogs.TIMEOUT = 120
 
 # Shared executor used by _with_timeout — avoids per-call pool spawn/teardown.
 _TIMEOUT_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="librarian")
@@ -73,7 +73,7 @@ class CatalogDef:
 
 # ── Helpers ──────────────────────────────────────────────────────
 
-_QUERY_TIMEOUT = 60  # seconds per network query
+_QUERY_TIMEOUT = 120  # seconds per network query
 
 
 def _with_timeout(func, *args, timeout=_QUERY_TIMEOUT, **kwargs):
