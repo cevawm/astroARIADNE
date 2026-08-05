@@ -391,7 +391,7 @@ class Librarian:
 
         main_cats = _with_timeout(
             Vizier.query_constraints,
-            catalog="I/355/gaiadr3", Source=str(self._gaia_id),
+            catalog="I/355/gaiadr3", Source=f"=={self._gaia_id}",
         )
         if not main_cats or len(main_cats[0]) == 0:
             logger.warning("Gaia DR3 source %d not found", self._gaia_id)
@@ -401,7 +401,7 @@ class Librarian:
         # FLAME astrophysical parameters table
         ap_cats = _with_timeout(
             Vizier.query_constraints,
-            catalog="I/355/paramp", Source=str(self._gaia_id),
+            catalog="I/355/paramp", Source=f"=={self._gaia_id}",
         )
         ap = ap_cats[0][0] if ap_cats and len(ap_cats[0]) > 0 else None
 
@@ -622,7 +622,7 @@ class Librarian:
             return
         res = _with_timeout(
             Vizier.query_constraints,
-            catalog="I/352/gedr3dis", Source=str(self._gaia_id),
+            catalog="I/352/gedr3dis", Source=f"=={self._gaia_id}",
         )
         if not res or len(res[0]) == 0:
             return
@@ -1141,7 +1141,7 @@ class Librarian:
             cat = _with_timeout(
                 Vizier.query_constraints,
                 catalog="J/MNRAS/506/150/catalog",
-                Source=str(self._gaia_id),
+                Source=f"=={self._gaia_id}",
             )
             if not cat or len(cat[0]) == 0:
                 return None
